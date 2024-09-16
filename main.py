@@ -2,7 +2,7 @@ import os
 import httpx
 from fastapi import FastAPI, Request, HTTPException, Header
 
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None)
 
 KKM_SERVER_URL = os.getenv("KKM_SERVER_URL")
 
