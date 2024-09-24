@@ -38,7 +38,10 @@ async def proxy_request(request: Request):
 # Получение списка ККМ
 async def list_request():
     request_data = {"Command": "List"}
-    return await execute_api_request(request_data, credentials)
+    response = await execute_api_request(request_data, credentials)
+    devices = response.get("ListUnit", [])
+    devices_list = [device["NumDevice"] for device in devices]
+    return devices_list
 
 
 # Открытие смены
