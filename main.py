@@ -1,6 +1,6 @@
 import httpx
-from fastapi import FastAPI, Request, HTTPException, Header
-from config import TELEGRAM_KEY, KKM_SERVER_URL, CHAT_ID
+from fastapi import FastAPI, Request, HTTPException
+from config import TELEGRAM_KEY, KKM_SERVER_URL, CHAT_ID, credentials
 
 app = FastAPI(docs_url=None, redoc_url=None)
 
@@ -14,17 +14,11 @@ async def send_to_telegram(message: str):
         await client.post(url, json=payload)
 
 
-# Выполнение запроса к API
-@app.post("/Execute")
-async def execute_request(request: Request, authorization: str = Header(None)):
-    request_data = await request.json()
-    headers = {"Authorization": authorization}
-
+# Запрос к API
+async def execute_api_request(data: dict, headers: dict, url: str = KKM_SERVER_URL):
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(
-                KKM_SERVER_URL, json=request_data, headers=headers
-            )
+            response = await client.post(url, json=data, headers=headers)
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
             raise HTTPException(status_code=e.response.status_code, detail=str(e))
@@ -32,3 +26,28 @@ async def execute_request(request: Request, authorization: str = Header(None)):
             raise HTTPException(status_code=500, detail=str(e))
 
     return response.json()
+
+
+# Проксирование запросов к API
+@app.post("/Execute")
+async def proxy_request(request: Request):
+    request_data = await request.json()
+    return await execute_api_request(request_data, credentials)
+
+
+# Получение списка ККМ
+async def list_request():
+    request_data = {"Command": "List"}
+    return await execute_api_request(request_data, credentials)
+
+
+# Открытие смены
+async def open_shift_request():
+    request_data = {"Command": "OpenShift"}
+    return await execute_api_request(request_data, credentials)
+
+
+# Закрытие смены
+async def close_shift_request():
+    request_data = {"Command": "CloseShift"}
+    return await execute_api_request(request_data, credentials)
