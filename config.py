@@ -14,3 +14,9 @@ AUTH_PASS = os.getenv("AUTH_PASS")
 login_data = f"{AUTH_LOGIN}:{AUTH_PASS}"
 encoded_data = base64.b64encode(login_data.encode("utf-8")).decode("utf-8")
 credentials = {"Authorization": f"Basic {encoded_data}"}
+
+# Данные времени выполнения запросов
+OPEN_H = 0  # Час открытия смены
+OPEN_M = 0  # Минута открытия смены
+CLOSE_H = 0  # Час закрытия смены
+CLOSE_M = 0  # Минута закрытия смены

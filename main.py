@@ -1,14 +1,36 @@
 import httpx
+import json
+import datetime
+import asyncio
 from fastapi import FastAPI, Request, HTTPException
-from config import TELEGRAM_KEY, KKM_SERVER_URL, CHAT_ID, credentials
+from config import (
+    TELEGRAM_KEY,
+    KKM_SERVER_URL,
+    CHAT_ID,
+    credentials,
+    OPEN_H,
+    OPEN_M,
+    CLOSE_H,
+    CLOSE_M,
+)
+from contextlib import asynccontextmanager
 
-app = FastAPI(docs_url=None, redoc_url=None)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    main_task = asyncio.create_task(manage_requests())
+    yield
+    main_task.cancel()
+    await main_task
+
+
+app = FastAPI(docs_url=None, redoc_url=None, lifespan=lifespan)
 
 
 # Отправка сообщения в Telegram
 async def send_to_telegram(message: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_KEY}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
+    payload = {"chat_id": CHAT_ID, "text": message}
 
     async with httpx.AsyncClient() as client:
         await client.post(url, json=payload)
@@ -45,12 +67,41 @@ async def list_request():
 
 
 # Открытие смены
-async def open_shift_request():
-    request_data = {"Command": "OpenShift"}
-    return await execute_api_request(request_data, credentials)
+async def open_shift_request(num_device: int):
+    request_data = {"Command": "OpenShift", "NumDevice": num_device}
+    result = await execute_api_request(request_data, credentials)
+    message = json.dumps(result, ensure_ascii=False)
+    await send_to_telegram(message)
+    return result
 
 
 # Закрытие смены
-async def close_shift_request():
-    request_data = {"Command": "CloseShift"}
-    return await execute_api_request(request_data, credentials)
+async def close_shift_request(num_device: int):
+    request_data = {"Command": "CloseShift", "NumDevice": num_device}
+    result = await execute_api_request(request_data, credentials)
+    message = json.dumps(result, ensure_ascii=False)
+    await send_to_telegram(message)
+    return result
+
+
+# Управление запросами
+async def manage_requests():
+    while True:
+        try:
+            now = datetime.datetime.now()
+
+            if now.hour == CLOSE_H and now.minute == CLOSE_M:
+                devices = await list_request()
+                await asyncio.gather(
+                    *(close_shift_request(num_device) for num_device in devices)
+                )
+
+            elif now.hour == OPEN_H and now.minute == OPEN_M:
+                devices = await list_request()
+                await asyncio.gather(
+                    *(open_shift_request(num_device) for num_device in devices)
+                )
+
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            break
