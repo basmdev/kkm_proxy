@@ -43,9 +43,9 @@ async def execute_api_request(data: dict, headers: dict, url: str = KKM_SERVER_U
             response = await client.post(url, json=data, headers=headers)
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
-            raise HTTPException(status_code=e.response.status_code, detail=str(e))
+            print(f"Ошибка соединения: {e.response.status_code}.")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            print("Неизвестная ошибка соединения.")
 
     return response.json()
 
