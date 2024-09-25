@@ -1,17 +1,16 @@
 import httpx
-import json
 import datetime
 import asyncio
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from config import (
     TELEGRAM_KEY,
     KKM_SERVER_URL,
     CHAT_ID,
-    credentials,
     OPEN_H,
     OPEN_M,
     CLOSE_H,
     CLOSE_M,
+    credentials,
 )
 from contextlib import asynccontextmanager
 
@@ -30,24 +29,21 @@ app = FastAPI(docs_url=None, redoc_url=None, lifespan=lifespan)
 # Отправка сообщения в Telegram
 async def send_to_telegram(message: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_KEY}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": message}
+    payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
 
     async with httpx.AsyncClient() as client:
         await client.post(url, json=payload)
 
 
 # Запрос к API
-async def execute_api_request(data: dict, headers: dict, url: str = KKM_SERVER_URL):
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(url, json=data, headers=headers)
+async def execute_api_request(data: dict, headers: dict):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(KKM_SERVER_URL, json=data, headers=headers)
             response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            print(f"Ошибка соединения: {e.response.status_code}.")
-        except Exception as e:
-            print("Неизвестная ошибка соединения.")
-
-    return response.json()
+            return response.json()
+    except Exception as e:
+        return {"Ошибка при выполнении запроса": str(e)}
 
 
 # Проксирование запросов к API
@@ -68,19 +64,37 @@ async def list_request():
 
 # Открытие смены
 async def open_shift_request(num_device: int):
-    request_data = {"Command": "OpenShift", "NumDevice": num_device}
+    request_data = {"Command": "OpenShift", "NumDevice": num_device, "NotPrint": True}
     result = await execute_api_request(request_data, credentials)
-    message = json.dumps(result, ensure_ascii=False)
-    await send_to_telegram(message)
+
+    device = result.get("NumDevice", "-")
+    error = result.get("Error", "-")
+    status = result.get("Status", "-")
+
+    await send_to_telegram(
+        f"""<b>Открытие смены для ККМ №{device}:</b>
+Статус: {status}
+Ошибки: {error}"""
+    )
+
     return result
 
 
 # Закрытие смены
 async def close_shift_request(num_device: int):
-    request_data = {"Command": "CloseShift", "NumDevice": num_device}
+    request_data = {"Command": "CloseShift", "NumDevice": num_device, "NotPrint": True}
     result = await execute_api_request(request_data, credentials)
-    message = json.dumps(result, ensure_ascii=False)
-    await send_to_telegram(message)
+
+    device = result.get("NumDevice", "-")
+    error = result.get("Error", "-")
+    status = result.get("Status", "-")
+
+    await send_to_telegram(
+        f"""<b>Закрытие смены для ККМ №{device}:</b>
+Статус: {status}
+Ошибки: {error}"""
+    )
+
     return result
 
 
@@ -103,5 +117,6 @@ async def manage_requests():
                 )
 
             await asyncio.sleep(60)
+
         except asyncio.CancelledError:
             break
