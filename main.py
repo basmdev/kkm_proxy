@@ -1,18 +1,12 @@
-import httpx
-import datetime
 import asyncio
-from fastapi import FastAPI, Request
-from config import (
-    TELEGRAM_KEY,
-    KKM_SERVER_URL,
-    CHAT_ID,
-    OPEN_H,
-    OPEN_M,
-    CLOSE_H,
-    CLOSE_M,
-    credentials,
-)
+import datetime
 from contextlib import asynccontextmanager
+
+import httpx
+from fastapi import FastAPI, Request
+
+from config import (CHAT_ID, CLOSE_H, CLOSE_M, KKM_SERVER_URL, OPEN_H, OPEN_M,
+                    TELEGRAM_KEY, credentials)
 
 
 @asynccontextmanager
