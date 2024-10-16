@@ -5,8 +5,16 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI, Request
 
-from config import (CHAT_ID, CLOSE_H, CLOSE_M, KKM_SERVER_URL, OPEN_H, OPEN_M,
-                    TELEGRAM_KEY, credentials)
+from config import (
+    CHAT_ID,
+    CLOSE_H,
+    CLOSE_M,
+    KKM_SERVER_URL,
+    OPEN_H,
+    OPEN_M,
+    TELEGRAM_KEY,
+    credentials,
+)
 
 
 @asynccontextmanager
@@ -25,8 +33,11 @@ async def send_to_telegram(message: str):
     url = f"https://api.telegram.org/bot{TELEGRAM_KEY}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": message, "parse_mode": "HTML"}
 
-    async with httpx.AsyncClient() as client:
-        await client.post(url, json=payload)
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload)
+    except Exception as e:
+        print(f"Ошибка при отправке сообщения в Telegram: {e}")
 
 
 # Запрос к API
